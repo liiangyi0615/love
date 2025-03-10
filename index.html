@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人AI助手</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(rgba(255, 192, 203, 0.15), rgba(255, 182, 193, 0.15)),
+                        url('https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            color: #d84f77;
+            font-size: 2.8rem;
+            font-weight: 600;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            font-family: 'Times New Roman', serif;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        header::after {
+            content: '❤ Love Assistant ❤';
+            display: block;
+            color: #db7093;
+            font-size: 1.2rem;
+            font-style: italic;
+            margin-top: 0.5rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+        }
+
+        #ai-chat {
+            height: auto;
+            padding: 0;
+            margin: 0;
+        }
+
+        #ai-chat header {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-bottom: 1px solid rgba(219, 112, 147, 0.1);
+        }
+
+        #ai-chat header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .chat-container {
+            background: linear-gradient(rgba(255, 255, 255, 0.97), rgba(255, 255, 255, 0.95)),
+                        url('https://images.unsplash.com/photo-1581022295087-35e593704911?ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80');
+            background-size: cover;
+            background-position: center;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(216, 79, 119, 0.15);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            position: relative;
+            margin: 1rem 0;
+        }
+
+        .chat-history {
+            height: 500px;
+            overflow-y: auto;
+            padding: 2rem;
+            scroll-behavior: smooth;
+        }
+
+        .chat-history::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-history::-webkit-scrollbar-track {
+            background: rgba(255, 192, 203, 0.1);
+            border-radius: 4px;
+        }
+
+        .chat-history::-webkit-scrollbar-thumb {
+            background: rgba(219, 112, 147, 0.3);
+            border-radius: 4px;
+        }
+
+        .message {
+            position: relative;
+            margin-bottom: 1.5rem;
+            padding: 1rem 1.5rem;
+            border-radius: 15px;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease-out;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            line-height: 1.6;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            background: linear-gradient(135deg, rgba(219, 112, 147, 0.95) 0%, rgba(199, 92, 127, 0.95) 100%);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+            box-shadow: 0 3px 15px rgba(219, 112, 147, 0.2);
+        }
+
+        .ai-message {
+            background: linear-gradient(135deg, rgba(255, 240, 245, 0.95) 0%, rgba(255, 228, 225, 0.95) 100%);
+            color: #2c3e50;
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 3px 15px rgba(255, 240, 245, 0.3);
+        }
+
+        .input-area {
+            padding: 1.5rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(5px);
+            display: flex;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.98);
+        }
+
+        .message::after,
+        .user-message::after,
+        .ai-message::after {
+            display: none;
+        }
+
+        textarea {
+            flex: 1;
+            min-height: 50px;
+            max-height: 150px;
+            padding: 0.8rem 1rem;
+            line-height: 1.5;
+            font-size: 1rem;
+            border: 2px solid rgba(219, 112, 147, 0.2);
+            border-radius: 10px;
+            resize: none;
+        }
+
+        button#sendButton,
+        button#hotSendButton,
+        button#deepseekSendButton {
+            min-width: 80px;
+            height: 45px;
+            margin-left: 0.5rem;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #db7093 0%, #c75c7f 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button#sendButton:hover,
+        button#hotSendButton:hover,
+        button#deepseekSendButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(219, 112, 147, 0.3);
+        }
+
+        .container::before,
+        .container::after {
+            content: '♥';
+            position: absolute;
+            font-size: 8rem;
+            color: rgba(219, 112, 147, 0.1);
+            z-index: -1;
+        }
+
+        .container::before {
+            top: -2rem;
+            left: -2rem;
+            transform: rotate(-15deg);
+        }
+
+        .container::after {
+            bottom: -2rem;
+            right: -2rem;
+            transform: rotate(15deg);
+        }
+
+        .chat-container::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            left: -50px;
+            right: -50px;
+            bottom: -50px;
+            background: radial-gradient(circle at center, rgba(255,192,203,0.15) 0%, rgba(255,255,255,0) 70%);
+            pointer-events: none;
+        }
+
+        .chat-container:hover {
+            box-shadow: 0 15px 40px rgba(216, 79, 119, 0.2);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+
+        .nav-bar {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 10px rgba(219, 112, 147, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            color: #d84f77;
+            text-decoration: none;
+            padding: 0.5rem 1.5rem;
+            margin: 0 0.5rem;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: linear-gradient(135deg, #db7093 0%, #c75c7f 100%);
+            color: white;
+        }
+
+        .page-section {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .page-section.active {
+            display: block;
+        }
+
+        .welcome-content {
+            text-align: center;
+            padding: 8rem 0;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .welcome-content h1 {
+            font-size: 3.2rem;
+            margin-bottom: 1.5rem;
+            color: #d84f77;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            line-height: 1.2;
+        }
+
+        .welcome-content p {
+            font-size: 1.4rem;
+            color: #666;
+            margin-bottom: 3rem;
+            line-height: 1.5;
+        }
+
+        .start-chat-btn {
+            font-size: 1.4rem;
+            padding: 1.2rem 3.5rem;
+            background: linear-gradient(135deg, #db7093 0%, #c75c7f 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(219, 112, 147, 0.3);
+            display: inline-block;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .start-chat-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(219, 112, 147, 0.4);
+        }
+
+        .start-chat-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .welcome-content::before,
+        .welcome-content::after {
+            content: '♥';
+            position: absolute;
+            font-size: 6rem;
+            color: rgba(219, 112, 147, 0.1);
+            z-index: -1;
+        }
+
+        .welcome-content::before {
+            top: 0;
+            left: -80px;
+            transform: rotate(-15deg);
+        }
+
+        .welcome-content::after {
+            bottom: 0;
+            right: -80px;
+            transform: rotate(15deg);
+        }
+
+        .settings-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(219, 112, 147, 0.1);
+        }
+
+        .setting-item {
+            margin-bottom: 1.5rem;
+        }
+
+        .setting-item label {
+            display: block;
+            color: #d84f77;
+            margin-bottom: 0.5rem;
+        }
+
+        .setting-item select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid rgba(219, 112, 147, 0.2);
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .contact-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(219, 112, 147, 0.1);
+        }
+
+        .contact-info p {
+            margin-bottom: 1rem;
+            color: #666;
+        }
+
+        .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .contact-form input,
+        .contact-form textarea {
+            padding: 0.8rem;
+            border: 2px solid rgba(219, 112, 147, 0.2);
+            border-radius: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-wrap: wrap;
+            }
+            
+            .contact-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .welcome-content {
+                padding: 4rem 1rem;
+            }
+            
+            .welcome-content h1 {
+                font-size: 2.5rem;
+            }
+            
+            .welcome-content p {
+                font-size: 1.2rem;
+            }
+            
+            .start-chat-btn {
+                font-size: 1.2rem;
+                padding: 1rem 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="nav-container">
+            <a href="#home" class="nav-item active">首页</a>
+            <a href="#ai-chat" class="nav-item">恋爱AI体验</a>
+            <a href="#ai-settings" class="nav-item">热恋AI</a>
+            <a href="#deepseek" class="nav-item">Deepseek-V3体验</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <section id="home" class="page-section active">
+            <div class="welcome-content">
+                <h1>欢迎来到AI恋爱助手</h1>
+                <p>让AI为您带来温暖的陪伴与倾听</p>
+                <button class="start-chat-btn" onclick="switchToChat()">开始体验</button>
+            </div>
+        </section>
+
+        <section id="ai-chat" class="page-section">
+            <header>
+                <h1>AI个人助手</h1>
+            </header>
+            
+            <main class="chat-container">
+                <div class="chat-history" id="chatHistory">
+                    <!-- 聊天记录将在这里动态显示 -->
+                </div>
+                
+                <div class="input-area">
+                    <textarea id="userInput" placeholder="想我了吗..."></textarea>
+                    <button id="sendButton">发送</button>
+                </div>
+            </main>
+        </section>
+
+        <section id="ai-settings" class="page-section">
+            <header>
+                <h1>热恋AI</h1>
+            </header>
+            
+            <main class="chat-container">
+                <div class="chat-history" id="hotChatHistory">
+                    <!-- 热恋AI聊天记录将在这里动态显示 -->
+                </div>
+                
+                <div class="input-area">
+                    <textarea id="hotUserInput" placeholder="想我了吗..."></textarea>
+                    <button id="hotSendButton">发送</button>
+                </div>
+            </main>
+        </section>
+
+        <section id="deepseek" class="page-section">
+            <header>
+                <h1>Deepseek AI</h1>
+            </header>
+            
+            <main class="chat-container">
+                <div class="chat-history" id="deepseekChatHistory">
+                    <!-- Deepseek聊天记录将在这里动态显示 -->
+                </div>
+                
+                <div class="input-area">
+                    <textarea id="deepseekInput" placeholder="想问点什么..."></textarea>
+                    <button id="deepseekSendButton">发送</button>
+                </div>
+            </main>
+        </section>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 页面切换功能
+            const navItems = document.querySelectorAll('.nav-item');
+            const sections = document.querySelectorAll('.page-section');
+
+            // 修改初始欢迎消息
+            async function addWelcomeMessage() {
+                try {
+                    addMessage("宝宝我想你了！", false);
+                } catch (error) {
+                    console.error("Error sending welcome message:", error);
+                }
+            }
+
+            // 直接在DOMContentLoaded时显示欢迎消息
+            setTimeout(addWelcomeMessage, 500);
+
+            // 修改页面切换功能
+            function switchPage(pageId) {
+                sections.forEach(section => {
+                    section.classList.remove('active');
+                });
+                navItems.forEach(item => {
+                    item.classList.remove('active');
+                });
+
+                document.querySelector(pageId).classList.add('active');
+                document.querySelector(`[href="${pageId}"]`).classList.add('active');
+            }
+
+            // 移除条件判断，直接显示欢迎消息
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const pageId = item.getAttribute('href');
+                    switchPage(pageId);
+                    if (pageId === '#ai-settings') {
+                        setTimeout(addHotWelcomeMessage, 500);
+                    }
+                });
+            });
+
+            // 首页开始体验按钮
+            window.switchToChat = function() {
+                switchPage('#ai-chat');
+            };
+
+            const chatHistory = document.getElementById('chatHistory');
+            const userInput = document.getElementById('userInput');
+            const sendButton = document.getElementById('sendButton');
+
+            // 恋爱AI体验的配置
+            const API_CONFIG = {
+                appid: "e269d7b9",
+                api_secret: "YmY2ODg5NTI3NTBlNTg3NWVmODEyM2Zm",
+                api_key: "5b838edeb2cc0ae31d305e37a81cdb71",
+                domain: "4.0Ultra",
+                url: "wss://spark-openapi.cn-huabei-1.xf-yun.com/v1/assistants/b9opgyxrioas_v1"
+            };
+
+            // 热恋AI的配置
+            const HOT_API_CONFIG = {
+                appid: "e269d7b9",
+                api_secret: "YmY2ODg5NTI3NTBlNTg3NWVmODEyM2Zm",
+                api_key: "5b838edeb2cc0ae31d305e37a81cdb71",
+                domain: "4.0Ultra",
+                url: "wss://spark-api.xf-yun.com/v4.0/chat"
+            };
+
+            // Deepseek配置
+            const DEEPSEEK_CONFIG = {
+                base_url: "https://api.deepseek.com",
+                api_key: "sk-8c59152788614b308c4f094fc8ab0cff",
+                model: 'deepseek-reasoner'
+            };
+
+            // 修改鉴权URL生成函数
+            function getAuthUrl(config, isHot = false) {
+                const host = isHot ? "spark-api.xf-yun.com" : "spark-openapi.cn-huabei-1.xf-yun.com";
+                const date = new Date().toUTCString();
+                const algorithm = "hmac-sha256";
+                const headers = "host date request-line";
+                const requestLine = isHot ? 
+                    "GET /v4.0/chat HTTP/1.1" : 
+                    "GET /v1/assistants/b9opgyxrioas_v1 HTTP/1.1";
+                const signatureOrigin = `host: ${host}\ndate: ${date}\n${requestLine}`;
+                
+                const signatureSha = CryptoJS.HmacSHA256(signatureOrigin, config.api_secret);
+                const signature = CryptoJS.enc.Base64.stringify(signatureSha);
+                
+                const authorizationOrigin = `api_key="${config.api_key}", algorithm="${algorithm}", headers="${headers}", signature="${signature}"`;
+                const authorization = btoa(authorizationOrigin);
+                
+                return `${config.url}?authorization=${authorization}&date=${encodeURI(date)}&host=${host}`;
+            }
+
+            // 修改普通AI的通信部分
+            async function getAIResponse(userMessage) {
+                return new Promise((resolve, reject) => {
+                    const ws = new WebSocket(getAuthUrl(API_CONFIG, false));
+                    
+                    const message = {
+                        header: {
+                            app_id: API_CONFIG.appid
+                        },
+                        parameter: {
+                            chat: {
+                                domain: API_CONFIG.domain,
+                                temperature: 0.6,  // 稍微降低随机性
+                                max_tokens: 2048
+                            }
+                        },
+                        payload: {
+                            message: {
+                                text: [{
+                                    role: "system",
+                                    content: "你现在是一个温柔体贴的AI恋爱助手，要以关心和理解的态度与用户交流。"
+                                }, {
+                                    role: "user",
+                                    content: userMessage
+                                }]
+                            }
+                        }
+                    };
+
+                    ws.onopen = () => {
+                        ws.send(JSON.stringify(message));
+                    };
+
+                    let responseText = '';
+                    
+                    ws.onmessage = (event) => {
+                        const response = JSON.parse(event.data);
+                        if (response.header.code !== 0) {
+                            ws.close();
+                            reject(new Error(`Error: ${response.header.code}`));
+                            return;
+                        }
+
+                        const text = response.payload.choices.text[0].content;
+                        responseText += text;
+
+                        if (response.header.status === 2) {
+                            ws.close();
+                            resolve(responseText);
+                        }
+                    };
+
+                    ws.onerror = (error) => {
+                        reject(error);
+                    };
+                });
+            }
+
+            // 添加消息到聊天历史
+            function addMessage(content, isUser = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+                messageDiv.textContent = content;
+                chatHistory.appendChild(messageDiv);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }
+
+            // 处理发送消息
+            async function handleSend() {
+                const message = userInput.value.trim();
+                if (!message) return;
+
+                try {
+                    // 添加用户消息
+                    addMessage(message, true);
+                    userInput.value = '';
+                    sendButton.disabled = true;
+
+                    // 获取并添加AI响应
+                    const aiResponse = await getAIResponse(message);
+                    addMessage(aiResponse, false);
+                } catch (error) {
+                    addMessage("抱歉，发生了错误：" + error.message, false);
+                } finally {
+                    sendButton.disabled = false;
+                }
+            }
+
+            // 事件监听器
+            sendButton.addEventListener('click', handleSend);
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                }
+            });
+
+            const hotChatHistory = document.getElementById('hotChatHistory');
+            const hotUserInput = document.getElementById('hotUserInput');
+            const hotSendButton = document.getElementById('hotSendButton');
+
+            // 修改热恋AI的通信部分
+            async function getHotAIResponse(userMessage) {
+                return new Promise((resolve, reject) => {
+                    const ws = new WebSocket(getAuthUrl(HOT_API_CONFIG, true));
+                    
+                    const message = {
+                        header: {
+                            app_id: HOT_API_CONFIG.appid
+                        },
+                        parameter: {
+                            chat: {
+                                domain: HOT_API_CONFIG.domain,
+                                temperature: 0.8,
+                                max_tokens: 2048
+                            }
+                        },
+                        payload: {
+                            message: {
+                                text: [{
+                                    role: "system",
+                                    content: "你现在是一个热恋中的女朋友，说话要甜蜜温柔，充满爱意。每次回复都要表达对对方的思念和关心。"
+                                }, {
+                                    role: "user",
+                                    content: userMessage
+                                }]
+                            }
+                        }
+                    };
+
+                    ws.onopen = () => {
+                        ws.send(JSON.stringify(message));
+                    };
+
+                    let responseText = '';
+                    
+                    ws.onmessage = (event) => {
+                        const response = JSON.parse(event.data);
+                        if (response.header.code !== 0) {
+                            ws.close();
+                            reject(new Error(`Error: ${response.header.code}`));
+                            return;
+                        }
+
+                        const text = response.payload.choices.text[0].content;
+                        responseText += text;
+
+                        if (response.header.status === 2) {
+                            ws.close();
+                            resolve(responseText);
+                        }
+                    };
+
+                    ws.onerror = (error) => {
+                        reject(error);
+                    };
+                });
+            }
+
+            // 修改热恋AI的发送消息处理函数
+            async function handleHotSend() {
+                const message = hotUserInput.value.trim();
+                if (!message) return;
+
+                try {
+                    // 添加用户消息
+                    addMessageToHot(message, true);
+                    hotUserInput.value = '';
+                    hotSendButton.disabled = true;
+
+                    // 使用专门的热恋AI响应函数
+                    const aiResponse = await getHotAIResponse(message);
+                    addMessageToHot(aiResponse, false);
+                } catch (error) {
+                    addMessageToHot("抱歉，发生了错误：" + error.message, false);
+                } finally {
+                    hotSendButton.disabled = false;
+                }
+            }
+
+            // 修改热恋AI的欢迎消息
+            async function addHotWelcomeMessage() {
+                try {
+                    const welcomeMessages = [
+                        "宝贝，我好想你！终于等到你来找我了~ ❤️",
+                        "亲爱的，你来啦！我正在想你呢~ 💕",
+                        "我最亲爱的，见到你真好！让我们开始甜蜜的对话吧~ 💝"
+                    ];
+                    const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+                    addMessageToHot(randomMessage, false);
+                } catch (error) {
+                    console.error("Error sending hot welcome message:", error);
+                }
+            }
+
+            // 添加消息到热恋聊天历史
+            function addMessageToHot(content, isUser = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+                messageDiv.textContent = content;
+                hotChatHistory.appendChild(messageDiv);
+                hotChatHistory.scrollTop = hotChatHistory.scrollHeight;
+            }
+
+            // 添加热恋AI的事件监听器
+            hotSendButton.addEventListener('click', handleHotSend);
+            hotUserInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleHotSend();
+                }
+            });
+
+            // 获取Deepseek相关DOM元素
+            const deepseekChatHistory = document.getElementById('deepseekChatHistory');
+            const deepseekInput = document.getElementById('deepseekInput');
+            const deepseekSendButton = document.getElementById('deepseekSendButton');
+
+            // 确保所有元素都存在
+            if (!deepseekChatHistory || !deepseekInput || !deepseekSendButton) {
+                console.error('Deepseek elements not found!');
+                return;
+            }
+
+            // 添加消息到Deepseek聊天历史
+            function addMessageToDeepseek(content, isUser = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+                messageDiv.textContent = content;
+                deepseekChatHistory.appendChild(messageDiv);
+                deepseekChatHistory.scrollTop = deepseekChatHistory.scrollHeight;
+            }
+
+            // 添加Deepseek API调用函数
+            async function getDeepseekResponse(userMessage) {
+                try {
+                    const response = await fetch(`${DEEPSEEK_CONFIG.base_url}/v1/chat/completions`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${DEEPSEEK_CONFIG.api_key}`,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: DEEPSEEK_CONFIG.model,
+                            messages: [{
+                                role: "system",
+                                content: "你是一个智能AI助手，可以帮助用户解答各种问题。"
+                            }, {
+                                role: "user",
+                                content: userMessage
+                            }],
+                            temperature: 0.7,
+                            max_tokens: 2000
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    return data.choices[0].message.content;
+                } catch (error) {
+                    console.error('Deepseek API error:', error);
+                    throw error;
+                }
+            }
+
+            // 修改handleDeepseekSend函数
+            async function handleDeepseekSend() {
+                const message = deepseekInput.value.trim();
+                if (!message) return;
+
+                try {
+                    // 添加用户消息
+                    addMessageToDeepseek(message, true);
+                    deepseekInput.value = '';
+                    deepseekSendButton.disabled = true;
+
+                    // 显示加载状态
+                    const loadingMessage = document.createElement('div');
+                    loadingMessage.className = 'message ai-message';
+                    loadingMessage.textContent = '正在思考...';
+                    deepseekChatHistory.appendChild(loadingMessage);
+
+                    // 调用API获取响应
+                    const aiResponse = await getDeepseekResponse(message);
+                    
+                    // 移除加载消息
+                    deepseekChatHistory.removeChild(loadingMessage);
+                    
+                    // 显示AI响应
+                    addMessageToDeepseek(aiResponse, false);
+                } catch (error) {
+                    console.error('Error:', error);
+                    addMessageToDeepseek("抱歉，发生了错误：" + error.message, false);
+                } finally {
+                    deepseekSendButton.disabled = false;
+                }
+            }
+
+            // 重新绑定事件监听器
+            deepseekSendButton.onclick = handleDeepseekSend;
+            
+            deepseekInput.onkeypress = (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleDeepseekSend();
+                }
+            };
+
+            // 添加测试代码
+            console.log('Deepseek elements:', {
+                history: deepseekChatHistory,
+                input: deepseekInput,
+                button: deepseekSendButton
+            });
+        });
+    </script>
+</body>
+</html> 
